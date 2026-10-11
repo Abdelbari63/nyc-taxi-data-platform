@@ -89,3 +89,38 @@ Passenger count is zero or negative :	Flag
 congestion_surcharge and airport_fee are entirely null :	Document as unavailable in this historical dataset
 
 ![alt text](firs_data_quality_rules.png)
+
+-----------------------
+-----------------------
+-----------------------
+
+## Data Validation and Quarantine
+
+### Validation rules
+
+The initial validation process applies three rules to the Yellow Taxi dataset:
+
+- **Trip duration:** Pickup and drop-off timestamps must be present, and drop-off must occur after pickup.
+- **Trip distance:** Distance must be present and non-negative.
+- **Passenger count:** Passenger count must be present and greater than zero.
+
+Records failing at least one rule are sent to quarantine. Each quarantined record includes a `quarantine_reason` column identifying the failed rule or rules.
+
+### Validation results
+
+| Month | Input records | Valid records | Quarantined records |
+|---|---:|---:|---:|
+| January 2016 | 10,905,067 | 10,893,187 | 11,880 |
+| February 2016 | 11,375,412 | 11,362,751 | 12,661 |
+| March 2016 | 12,203,824 | 12,190,818 | 13,006 |
+| **Total** | **34,484,303** | **34,446,756** | **37,547** |
+
+Approximately 99.89% of records passed all three rules.
+
+### Automated testing
+
+Pytest is used to test the individual validation rules and the processing pipeline. Five tests currently pass, covering valid and invalid durations, distances, passenger counts, output separation, and quarantine reasons.
+
+### Limitations
+
+These are initial validation rules, not a complete assessment of data quality. Zero-distance trips, negative fares, extreme values, and financial inconsistencies require further investigation. Raw source files are preserved unchanged.
