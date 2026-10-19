@@ -5,15 +5,26 @@ from datetime import date, datetime
 from pathlib import Path
 
 import pyarrow.parquet as pq
-from kafka import KafkaProducer
+from confluent_kafka import Producer
 
 
 # Project paths
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-DATA_FILE = PROJECT_ROOT / "data" / "raw" / "yellow_tripdata_2016-01.parquet"
+DATA_FILE = (
+    PROJECT_ROOT
+    / "data"
+    / "raw"
+    / "yellow_tripdata_2016-01.parquet"
+)
+CONFIG_FILE = (
+    PROJECT_ROOT
+    / "src"
+    / "streaming"
+    / "ccloud-python-client"
+    / "client.properties"
+)
 
 # Kafka configuration
-KAFKA_BOOTSTRAP_SERVERS = "127.0.0.1:9092"
 KAFKA_TOPIC = "taxi-trips"
 
 # Controlled test settings
@@ -22,32 +33,52 @@ MESSAGES_PER_SECOND = 10
 BATCH_SIZE = 50
 
 
-def json_serializer(value):
-    """Convert a Python dictionary into UTF-8 JSON bytes."""
-    return json.dumps(value, ensure_ascii=False).encode("utf-8")
+def read_config():
+    """Load Kafka credentials from the local properties file."""
+    if not CONFIG_FILE.exists():
+        raise FileNotFoundError(
+            f"Kafka configuration not found: {CONFIG_FILE}"
+        )
+
+    config = {}
+    with CONFIG_FILE.open(encoding="utf-8") as file:
+        for line in file:
+            line = line.strip()
+            if line and not line.startswith("#"):
+                key, value = line.split("=", 1)
+                config[key.strip()] = value.strip()
+
+    return config
 
 
 def normalize_value(value):
-    """Convert PyArrow values into JSON-compatible Python values."""
+    """Convert values to JSON-compatible Python types."""
     if value is None:
         return None
+
     if hasattr(value, "as_py"):
         value = value.as_py()
+
     if isinstance(value, (datetime, date)):
         return value.isoformat()
+
     return value
+
+
+def delivery_report(error, message):
+    """Report failed deliveries."""
+    if error is not None:
+        print(f"Delivery failed: {error}")
 
 
 def main():
     if not DATA_FILE.exists():
-        raise FileNotFoundError(f"Parquet file not found: {DATA_FILE}")
+        raise FileNotFoundError(
+            f"Parquet file not found: {DATA_FILE}"
+        )
 
-    producer = KafkaProducer(
-        bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
-        value_serializer=json_serializer,
-        acks="all",
-        retries=5,
-    )
+    config = read_config()
+    producer = Producer(config)
 
     sent_count = 0
     delay = 1 / MESSAGES_PER_SECOND
@@ -55,19 +86,27 @@ def main():
     try:
         parquet_file = pq.ParquetFile(DATA_FILE)
 
-        for batch in parquet_file.iter_batches(batch_size=BATCH_SIZE):
+        for batch in parquet_file.iter_batches(
+            batch_size=BATCH_SIZE
+        ):
             for row in batch.to_pylist():
                 event = {
                     key: normalize_value(value)
                     for key, value in row.items()
                 }
 
-                producer.send(KAFKA_TOPIC, value=event)
+                producer.produce(
+                    KAFKA_TOPIC,
+                    key=str(sent_count + 1),
+                    value=json.dumps(event).encode("utf-8"),
+                    callback=delivery_report,
+                )
+
                 sent_count += 1
+                producer.poll(0)
 
                 if sent_count % 10 == 0:
-                    producer.flush()
-                    print(f"Sent {sent_count} messages")
+                    print(f"Submitted {sent_count} messages")
 
                 time.sleep(delay)
 
@@ -77,11 +116,18 @@ def main():
             if sent_count >= MAX_MESSAGES:
                 break
 
-        producer.flush()
-        print(f"Finished. Total messages sent: {sent_count}")
+        remaining = producer.flush(30)
+
+        if remaining:
+            print(f"Warning: {remaining} messages remain undelivered.")
+        else:
+            print(
+                f"Finished. {sent_count} messages submitted "
+                "and delivery queue drained."
+            )
 
     finally:
-        producer.close()
+        producer.flush(10)
 
 
 if __name__ == "__main__":
