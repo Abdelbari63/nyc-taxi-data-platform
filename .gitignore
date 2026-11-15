@@ -1,6 +1,32 @@
+
+# Python virtual environments
 .venv/
+.venv-*/
 __pycache__/
 *.pyc
+.pytest_cache/
+
+# Secrets and credentials
 .env
+.env.*
+!.env.example
+*.pem
+*.key
+.databrickscfg
+profiles.yml
+
+# Data files
 data/
+*.parquet
+
+# Jupyter / Databricks
 .ipynb_checkpoints/
+
+# dbt generated files
+target/
+dbt_packages/
+logs/
+
+# Logs and system files
+*.log
+.DS_Store
