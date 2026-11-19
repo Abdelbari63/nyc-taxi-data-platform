@@ -1,0 +1,98 @@
+﻿
+version: 2
+
+models:
+  - name: fact_taxi_trips
+    description: >
+      Fact table containing one row per individual taxi trip
+      from the Silver dataset.
+
+    columns:
+      - name: pickup_date_key
+        data_tests:
+          - not_null
+          - relationships:
+                to: ref('dim_date')
+                field: date_key
+
+      - name: dropoff_date_key
+        data_tests:
+          - not_null
+          - relationships:
+                to: ref('dim_date')
+                field: date_key
+
+      - name: vendor_id
+        data_tests:
+          - not_null
+          - relationships:
+                to: ref('dim_vendor')
+                field: vendor_id
+
+      - name: payment_type
+        data_tests:
+          - not_null
+          - relationships:
+                to: ref('dim_payment_type')
+                field: payment_type
+
+      - name: ratecode_id
+        data_tests:
+          - not_null
+          - relationships:
+                to: ref('dim_rate_code')
+                field: ratecode_id
+
+      - name: pu_location_id
+        data_tests:
+          - not_null
+          - relationships:
+                to: ref('dim_location')
+                field: location_id
+
+      - name: do_location_id
+        data_tests:
+          - not_null
+          - relationships:
+                to: ref('dim_location')
+                field: location_id
+
+      - name: event_id
+        data_tests:
+          - unique
+          - not_null
+
+  - name: dim_date
+    columns:
+      - name: date_key
+        data_tests:
+          - unique
+          - not_null
+
+  - name: dim_vendor
+    columns:
+      - name: vendor_id
+        data_tests:
+          - unique
+          - not_null
+
+  - name: dim_payment_type
+    columns:
+      - name: payment_type
+        data_tests:
+          - unique
+          - not_null
+
+  - name: dim_rate_code
+    columns:
+      - name: ratecode_id
+        data_tests:
+          - unique
+          - not_null
+
+  - name: dim_location
+    columns:
+      - name: location_id
+        data_tests:
+          - unique
+          - not_null
