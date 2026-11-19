@@ -1,0 +1,10 @@
+
+version: 2
+
+sources:
+  - name: silver
+    database: NYC_TAXI_DW
+    schema: CURATED
+    tables:
+      - name: taxi_trips
+        identifier: TAXI_TRIPS
