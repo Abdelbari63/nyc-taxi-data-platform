@@ -1,0 +1,19 @@
+name: NYC_TAXI_DBT
+version: 1.0.0
+config-version: 2
+profile: NYC_TAXI_DBT
+model-paths:
+  - models
+analysis-paths:
+  - analyses
+test-paths:
+  - tests
+seed-paths:
+  - seeds
+macro-paths:
+  - macros
+snapshot-paths:
+  - snapshots
+models:
+  NYC_TAXI_DBT:
+    +materialized: view
